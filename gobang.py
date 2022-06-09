@@ -2,6 +2,8 @@
 # -*- coding: utf-8 -*-
 import sys, time
 
+MAX_DEPTH = 9
+MAX_MOVES = 15
 
 #----------------------------------------------------------------------
 # chessboard: �����࣬�򵥴��ַ���������ֻ��ߵ����ַ������ж���Ӯ��
@@ -9,7 +11,7 @@ import sys, time
 class chessboard (object):
 
 	def __init__ (self, forbidden = 0):
-		self.__board = [ [ 0 for n in xrange(15) ] for m in xrange(15) ]
+		self.__board = [ [ 0 for n in range(15) ] for m in range(15) ]
 		self.__forbidden = forbidden
 		self.__dirs = ( (-1, 0), (-1, 1), (0, 1), (1, 1), (1, 0), \
 			(1, -1), (0, -1), (-1, -1) )
@@ -18,8 +20,8 @@ class chessboard (object):
 	
 	# �������
 	def reset (self):
-		for j in xrange(15):
-			for i in xrange(15):
+		for j in range(15):
+			for i in range(15):
 				self.__board[i][j] = 0
 		return 0
 	
@@ -57,14 +59,14 @@ class chessboard (object):
 	def check (self):
 		board = self.__board
 		dirs = ((1, -1), (1, 0), (1, 1), (0, 1))
-		for i in xrange(15):
-			for j in xrange(15):
+		for i in range(15):
+			for j in range(15):
 				if board[i][j] == 0: continue
 				id = board[i][j]
 				for d in dirs:
 					x, y = j, i
 					count = 0
-					for k in xrange(5):
+					for k in range(5):
 						if self.get(y, x) != id: break
 						y += d[0]
 						x += d[1]
@@ -72,7 +74,7 @@ class chessboard (object):
 					if count == 5:
 						self.won = {}
 						r, c = i, j
-						for z in xrange(5):
+						for z in range(5):
 							self.won[(r, c)] = 1
 							r += d[0]
 							c += d[1]
@@ -88,8 +90,8 @@ class chessboard (object):
 		import StringIO
 		sio = StringIO.StringIO()
 		board = self.__board
-		for i in xrange(15):
-			for j in xrange(15):
+		for i in range(15):
+			for j in range(15):
 				stone = board[i][j]
 				if stone != 0:
 					ti = chr(ord('A') + i)
@@ -149,35 +151,35 @@ class chessboard (object):
 	
 	# ��ɫ���
 	def show (self):
-		print '  A B C D E F G H I J K L M N O'
+		print('  A B C D E F G H I J K L M N O')
 		mark = ('. ', 'O ', 'X ')
 		nrow = 0
 		self.check()
 		color1 = 10
 		color2 = 13
-		for row in xrange(15):
-			print chr(ord('A') + row),
-			for col in xrange(15):
+		for row in range(15):
+			print(chr(ord('A') + row), end='')
+			for col in range(15):
 				ch = self.__board[row][col]
 				if ch == 0: 
 					self.console(-1)
-					print '.',
+					print('.', end='')
 				elif ch == 1:
 					if (row, col) in self.won:
 						self.console(9)
 					else:
 						self.console(10)
-					print 'O',
+					print('O', end='')
 					#self.console(-1)
 				elif ch == 2:
 					if (row, col) in self.won:
 						self.console(9)
 					else:
 						self.console(13)
-					print 'X',
+					print('X', end='')
 					#self.console(-1)
 			self.console(-1)
-			print ''
+			print('')
 		return 0
 
 
@@ -188,8 +190,8 @@ class evaluation (object):
 
 	def __init__ (self):
 		self.POS = []
-		for i in xrange(15):
-			row = [ (7 - max(abs(i - 7), abs(j - 7))) for j in xrange(15) ]
+		for i in range(15):
+			row = [ (7 - max(abs(i - 7), abs(j - 7))) for j in range(15) ]
 			self.POS.append(tuple(row))
 		self.POS = tuple(self.POS)
 		self.STWO = 1		# ���
@@ -205,17 +207,17 @@ class evaluation (object):
 		self.NOTYPE = 11	
 		self.ANALYSED = 255		# �Ѿ�������
 		self.TODO = 0			# û�з�����
-		self.result = [ 0 for i in xrange(30) ]		# ���浱ǰֱ�߷���ֵ
-		self.line = [ 0 for i in xrange(30) ]		# ��ǰֱ������
+		self.result = [ 0 for i in range(30) ]		# ���浱ǰֱ�߷���ֵ
+		self.line = [ 0 for i in range(30) ]		# ��ǰֱ������
 		self.record = []			# ȫ�̷������ [row][col][����]
-		for i in xrange(15):
+		for i in range(15):
 			self.record.append([])
 			self.record[i] = []
-			for j in xrange(15):
+			for j in range(15):
 				self.record[i].append([ 0, 0, 0, 0])
 		self.count = []				# ÿ����ֵĸ�����count[����/����][ģʽ]
-		for i in xrange(3):
-			data = [ 0 for i in xrange(20) ]
+		for i in range(3):
+			data = [ 0 for i in range(20) ]
 			self.count.append(data)
 		self.reset()
 
@@ -223,14 +225,14 @@ class evaluation (object):
 	def reset (self):
 		TODO = self.TODO
 		count = self.count
-		for i in xrange(15):
+		for i in range(15):
 			line = self.record[i]
-			for j in xrange(15):
+			for j in range(15):
 				line[j][0] = TODO
 				line[j][1] = TODO
 				line[j][2] = TODO
 				line[j][3] = TODO
-		for i in xrange(20):
+		for i in range(20):
 			count[0][i] = 0
 			count[1][i] = 0
 			count[2][i] = 0
@@ -242,12 +244,12 @@ class evaluation (object):
 		count = self.count
 		if score < -9000:
 			stone = turn == 1 and 2 or 1
-			for i in xrange(20):
+			for i in range(20):
 				if count[stone][i] > 0:
 					score -= i
 		elif score > 9000:
 			stone = turn == 1 and 2 or 1
-			for i in xrange(20):
+			for i in range(20):
 				if count[turn][i] > 0:
 					score += i
 		return score
@@ -258,10 +260,10 @@ class evaluation (object):
 		TODO, ANALYSED = self.TODO, self.ANALYSED
 		self.reset()
 		# �ĸ��������
-		for i in xrange(15):
+		for i in range(15):
 			boardrow = board[i]
 			recordrow = record[i]
-			for j in xrange(15):
+			for j in range(15):
 				if boardrow[j] != 0:
 					if recordrow[j][0] == TODO:		# ˮƽû�з�������
 						self.__analysis_horizon(board, i, j)
@@ -279,11 +281,11 @@ class evaluation (object):
 		# �ֱ�԰��������㣺FIVE, FOUR, THREE, TWO�ȳ��ֵĴ���
 		for c in (FIVE, FOUR, SFOUR, THREE, STHREE, TWO, STWO):
 			check[c] = 1
-		for i in xrange(15):
-			for j in xrange(15):
+		for i in range(15):
+			for j in range(15):
 				stone = board[i][j]
 				if stone != 0:
-					for k in xrange(4):
+					for k in range(4):
 						ch = record[i][j][k]
 						if ch in check:
 							count[stone][ch] += 1
@@ -378,8 +380,8 @@ class evaluation (object):
 		
 		# ����λ��Ȩֵ�����������ĵ�Ȩֵ��7������һ��-1������Ȧ��0
 		wc, bc = 0, 0
-		for i in xrange(15):
-			for j in xrange(15):
+		for i in range(15):
+			for j in range(15):
 				stone = board[i][j]
 				if stone != 0:
 					if stone == WHITE:
@@ -398,10 +400,10 @@ class evaluation (object):
 	def __analysis_horizon (self, board, i, j):
 		line, result, record = self.line, self.result, self.record
 		TODO = self.TODO
-		for x in xrange(15):
+		for x in range(15):
 			line[x] = board[i][x]
 		self.analysis_line(line, result, 15, j)
-		for x in xrange(15):
+		for x in range(15):
 			if result[x] != TODO:
 				record[i][x][0] = result[x]
 		return record[i][j][0]
@@ -410,10 +412,10 @@ class evaluation (object):
 	def __analysis_vertical (self, board, i, j):
 		line, result, record = self.line, self.result, self.record
 		TODO = self.TODO
-		for x in xrange(15):
+		for x in range(15):
 			line[x] = board[x][j]
 		self.analysis_line(line, result, 15, i)
-		for x in xrange(15):
+		for x in range(15):
 			if result[x] != TODO:
 				record[x][j][1] = result[x]
 		return record[i][j][1]
@@ -431,7 +433,7 @@ class evaluation (object):
 			line[k] = board[y + k][x + k]
 			k += 1
 		self.analysis_line(line, result, k, j - x)
-		for s in xrange(k):
+		for s in range(k):
 			if result[s] != TODO:
 				record[y + s][x + s][2] = result[s]
 		return record[i][j][2]
@@ -449,7 +451,7 @@ class evaluation (object):
 			line[k] = board[y - k][x + k]
 			k += 1
 		self.analysis_line(line, result, k, j - x)
-		for s in xrange(k):
+		for s in range(k):
 			if result[s] != TODO:
 				record[y - s][x + s][3] = result[s]
 		return record[i][j][3]
@@ -458,8 +460,8 @@ class evaluation (object):
 		self.reset()
 		record = self.record
 		TODO = self.TODO
-		for i in xrange(15):
-			for j in xrange(15):
+		for i in range(15):
+			for j in range(15):
 				if board[i][j] != 0 and 1:
 					if self.record[i][j][0] == TODO:
 						self.__analysis_horizon(board, i, j)
@@ -482,12 +484,12 @@ class evaluation (object):
 		FOUR, SFOUR = self.FOUR, self.SFOUR
 		while len(line) < 30: line.append(0xf)
 		while len(record) < 30: record.append(TODO)
-		for i in xrange(num, 30):
+		for i in range(num, 30):
 			line[i] = 0xf
-		for i in xrange(num):
+		for i in range(num):
 			record[i] = TODO
 		if num < 5:
-			for i in xrange(num): 
+			for i in range(num): 
 				record[i] = ANALYSED
 			return 0
 		stone = line[pos]
@@ -512,12 +514,12 @@ class evaluation (object):
 		
 		# �����ֱ�߷�ΧС�� 5����ֱ�ӷ���
 		if right_range - left_range < 4:
-			for k in xrange(left_range, right_range + 1):
+			for k in range(left_range, right_range + 1):
 				record[k] = ANALYSED
 			return 0
 		
 		# �����Ѿ�������
-		for k in xrange(xl, xr + 1):
+		for k in range(xl, xr + 1):
 			record[k] = ANALYSED
 		
 		srange = xr - xl
@@ -623,9 +625,9 @@ class evaluation (object):
 		return 0
 	def textrec (self, direction = 0):
 		text = []
-		for i in xrange(15):
+		for i in range(15):
 			line = ''
-			for j in xrange(15):
+			for j in range(15):
 				line += '%x '%(self.record[i][j][direction] & 0xf)
 			text.append(line)
 		return '\n'.join(text)
@@ -639,7 +641,7 @@ class searcher (object):
 	# ��ʼ��
 	def __init__ (self):
 		self.evaluator = evaluation()
-		self.board = [ [ 0 for n in xrange(15) ] for i in xrange(15) ]
+		self.board = [ [ 0 for n in range(15) ] for i in range(15) ]
 		self.gameover = 0
 		self.overvalue = 0
 		self.maxdepth = 3
@@ -649,8 +651,8 @@ class searcher (object):
 		moves = []
 		board = self.board
 		POSES = self.evaluator.POS
-		for i in xrange(15):
-			for j in xrange(15):
+		for i in range(15):
+			for j in range(15):
 				if board[i][j] == 0:
 					score = POSES[i][j]
 					moves.append((score, i, j))
@@ -676,8 +678,9 @@ class searcher (object):
 		bestmove = None
 
 		# ö�ٵ�ǰ�����߷�
-		for score, row, col in moves:
-
+		progress_count = 0
+		for score, row, col in moves[:MAX_MOVES]:
+			progress_count += 1
 			# ��ǵ�ǰ�߷�������
 			self.board[row][col] = turn
 			
@@ -686,7 +689,8 @@ class searcher (object):
 
 			# ��������������������֣��ߵ��к��ߵ���
 			score = - self.__search(nturn, depth - 1, -beta, -alpha)
-
+			if depth == MAX_DEPTH:
+				print(progress_count, len(moves), score, row, col)
 			# �����������ǰ�߷�
 			self.board[row][col] = 0
 
@@ -768,15 +772,15 @@ def gamemain():
 
 	if len(sys.argv) > 1:
 		if sys.argv[1].lower() == 'hard':
-			DEPTH = 4
+			DEPTH = MAX_DEPTH
 
 	while 1:
-		print ''
+		print('')
 		while 1:
-			print '<ROUND %d>'%(len(history) + 1)
+			print('<ROUND %d>'%(len(history) + 1))
 			b.show()
-			print 'Your move (u:undo, q:quit):',
-			text = raw_input().strip('\r\n\t ')
+			print('Your move (u:undo, q:quit):', end='')
+			text = input().strip('\r\n\t ')
 			if len(text) == 2:
 				tr = ord(text[0].upper()) - ord('A')
 				tc = ord(text[1].upper()) - ord('A')
@@ -785,14 +789,14 @@ def gamemain():
 						row, col = tr, tc
 						break
 					else:
-						print 'can not move there'
+						print('can not move there')
 				else:
-					print 'bad position'
+					print('bad position')
 			elif text.upper() == 'U':
 				undo = True
 				break
 			elif text.upper() == 'Q':
-				print b.dumps()
+				print(b.dumps())
 				return 0
 			elif text.upper() == 'P':
 				auto = True
@@ -801,9 +805,9 @@ def gamemain():
 		if undo == True:
 			undo = False
 			if len(history) == 0:
-				print 'no history to undo'
+				print('no history to undo')
 			else:
-				print 'rollback from history ...'
+				print('rollback from history ...')
 				move = history.pop()
 				b.loads(move)
 		else:
@@ -813,22 +817,22 @@ def gamemain():
 
 				if b.check() == player:
 					b.show()
-					print b.dumps()
-					print ''
-					print 'YOU WIN !!'
+					print(b.dumps())
+					print('')
+					print('YOU WIN !!')
 					return 0
 
-			print 'robot is thinking now ...'
+			print('robot is thinking now ...')
 			score, row, col = s.search(player, DEPTH)
 			cord = '%s%s'%(chr(ord('A') + row), chr(ord('A') + col))
-			print 'robot move to %s (%d)'%(cord, score)
+			print('robot move to %s (%d)'%(cord, score))
 			b[row][col] = player
 
 			if b.check() == player:
 				b.show()
-				print b.dumps()
-				print ''
-				print 'YOU LOSE.'
+				print(b.dumps())
+				print('')
+				print('YOU LOSE.')
 				return 0
 			player = player % 2 + 1
 
@@ -843,12 +847,12 @@ if __name__ == '__main__':
 		b = chessboard()
 		b[10][10] = 1
 		b[11][11] = 2
-		for i in xrange(4):
+		for i in range(4):
 			b[5 + i][2 + i] = 2
-		for i in xrange(4):
+		for i in range(4):
 			b[7 - 0][3 + i] = 2
-		print b
-		print 'check', b.check()
+		print(b)
+		print('check', b.check())
 		return 0
 	def test2():
 		b = chessboard()
@@ -856,29 +860,29 @@ if __name__ == '__main__':
 		b[8][8] = 2
 		b[7][9] = 1
 		eva = evaluation()
-		for l in eva.POS: print l
+		for l in eva.POS: print(l)
 		return 0
 	def test3():
 		e = evaluation()
 		line = [ 0, 0, 1, 0, 1, 1, 1, 0, 0, 0]
 		record = []
 		e.analysis_line(line, record, len(line), 6)
-		print record[:10]
+		print(record[:10])
 		return 0
 	def test4():
 		b = chessboard()
 		b.loads('2:DF 1:EG 2:FG 1:FH 2:FJ 2:GG 1:GH 1:GI 2:HG 1:HH 1:IG 2:IH 1:JF 2:JI 1:KE')
 		b.loads('2:CE 2:CK 1:DF 1:DK 2:DL 1:EG 1:EI 1:EK 2:FG 1:FH 1:FI 1:FJ 1:FK 2:FL 1:GD 2:GE 2:GF 2:GG 2:GH 1:GI 1:GK 2:HG 1:HH 2:HJ 2:HK 2:IG 1:JG 2:AA')
 		eva = evaluation()
-		print b
+		print(b)
 		score = 0
 		t = time.time()
-		for i in xrange(10000):
+		for i in range(10000):
 			score = eva.evaluate(b.board(), 2)
 		#eva.test(b.board())
 		t = time.time() - t
-		print score, t
-		print eva.textrec(3)
+		print(score, t)
+		print(eva.textrec(3))
 		return 0
 	def test5():
 		import profile
@@ -896,9 +900,9 @@ if __name__ == '__main__':
 		score, row, col = s.search(2, 3)
 		t = time.time() - t
 		b[row][col] = 2
-		print b
-		print score, t
-		print chr(ord('A') + row) + chr(ord('A') + col)
+		print(b)
+		print(score, t)
+		print(chr(ord('A') + row) + chr(ord('A') + col))
 	def test7():
 		b = chessboard()
 		s = searcher()
@@ -907,16 +911,16 @@ if __name__ == '__main__':
 		turn = 2
 		while 1:
 			score, row, col = s.search(2, 2)
-			print 'robot move %s%s (%d)'%(chr(ord('A') + row), chr(ord('A') + col), score)
+			print('robot move %s%s (%d)'%(chr(ord('A') + row), chr(ord('A') + col), score))
 			b[row][col] = 2
 			if b.check() == 2:
-				print b
-				print b.dumps()
-				print 'you lose !!'
+				print(b)
+				print(b.dumps())
+				print('you lose !!')
 				return 0
 			while 1:
-				print b
-				print 'your move (pos):',
+				print(b)
+				print('your move (pos):', end='')
 				text = raw_input().strip('\r\n\t ')
 				if len(text) == 2:
 					tr = ord(text[0].upper()) - ord('A')
@@ -926,17 +930,17 @@ if __name__ == '__main__':
 							row, col = tr, tc
 							break
 						else:
-							print 'can not move there'
+							print('can not move there')
 					else:
-						print 'bad position'
+						print('bad position')
 				elif text.upper() == 'Q':
-					print b.dumps()
+					print(b.dumps())
 					return 0
 			b[row][col] = 1
 			if b.check() == 1:
-				print b
-				print b.dumps()
-				print 'you win !!'
+				print(b)
+				print(b.dumps())
+				print('you win !!')
 				return 0
 		return 0
 	#test6()
