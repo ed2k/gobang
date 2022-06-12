@@ -2,8 +2,9 @@
 # -*- coding: utf-8 -*-
 import sys, time
 
-MAX_DEPTH = 9
-MAX_MOVES = 15
+MAX_DEPTH = 3
+MAX_MOVES = 1
+BLACK, WHITE = 1, 2
 
 #----------------------------------------------------------------------
 # chessboard: �����࣬�򵥴��ַ���������ֻ��ߵ����ַ������ж���Ӯ��
@@ -55,7 +56,7 @@ class chessboard (object):
 			self.__board[row][col] = x
 		return 0
 	
-	# �ж���Ӯ������0������Ӯ����1������Ӯ����2������Ӯ��
+	# check who wins 0:nobody, 1:black, 2:white
 	def check (self):
 		board = self.__board
 		dirs = ((1, -1), (1, 0), (1, 1), (0, 1))
@@ -87,17 +88,7 @@ class chessboard (object):
 	
 	# ������ֵ��ַ���
 	def dumps (self):
-		import StringIO
-		sio = StringIO.StringIO()
-		board = self.__board
-		for i in range(15):
-			for j in range(15):
-				stone = board[i][j]
-				if stone != 0:
-					ti = chr(ord('A') + i)
-					tj = chr(ord('A') + j)
-					sio.write('%d:%s%s '%(stone, ti, tj))
-		return sio.getvalue()
+		return bdumps(self.__board)
 	
 	# ���ַ����������
 	def loads (self, text):
@@ -238,7 +229,7 @@ class evaluation (object):
 			count[2][i] = 0
 		return 0
 
-	# �ĸ�����ˮƽ����ֱ����б����б�������������̣�Ȼ����ݷ���������
+	# evaluate board with score, extra +/- based on self/opponent count
 	def evaluate (self, board, turn):
 		score = self.__evaluate(board, turn)
 		count = self.count
@@ -650,45 +641,76 @@ class searcher (object):
 	def genmove (self, turn):
 		moves = []
 		board = self.board
-		POSES = self.evaluator.POS
+		if turn == WHITE:
+			moves += self.genmove(BLACK)
+		if len(moves) == 1:  # gameover situation
+			return moves
 		for i in range(15):
 			for j in range(15):
 				if board[i][j] == 0:
-					score = POSES[i][j]
+					self.board[i][j] = turn
+					score = self.evaluator.evaluate(self.board, turn)
+					self.board[i][j] = 0
 					moves.append((score, i, j))
+					if abs(score) >= 9999:
+						#print('must position:', turn, score, i, j)
+						return [(score, i, j)]
 		moves.sort()
 		moves.reverse()
 		return moves
 	
 	# �ݹ�������������ѷ���
 	def __search (self, turn, depth, alpha = -0x7fffffff, beta = 0x7fffffff):
+		score = self.evaluator.evaluate(self.board, turn)
 
 		# ���Ϊ�����������̲�����
 		if depth <= 0:
-			score = self.evaluator.evaluate(self.board, turn)
 			return score
 
-		# �����Ϸ��������������
-		score = self.evaluator.evaluate(self.board, turn)
-		if abs(score) >= 9999 and depth < self.maxdepth: 
+		# game over returns right away		
+		if abs(score) >= 9999:
+			print('game over:', turn, score)
 			return score
 
-		# �����µ��߷�
+		# generate new moves
 		moves = self.genmove(turn)
 		bestmove = None
+		if depth == MAX_DEPTH:
+			for score, row, col in moves[:MAX_MOVES*2]:
+				print('mv', turn, score, row, col, len(moves))
+		
+		if len(moves) == 1:
+			score, row, col = moves[0]
+			self.bestmove = (row, col)
+			return score
 
 		# ö�ٵ�ǰ�����߷�
 		progress_count = 0
-		for score, row, col in moves[:MAX_MOVES]:
-			progress_count += 1
+		for score, row, col in moves:
+			if score < 9000:
+				#print(turn, progress_count, score, row, col)
+				progress_count += 1
+				if depth == MAX_DEPTH:
+					if progress_count > MAX_MOVES * 2:
+						break
+				elif progress_count > MAX_MOVES:
+					break
 			# ��ǵ�ǰ�߷�������
 			self.board[row][col] = turn
+			winner = self.check()
+			if winner != 0:
+				self.bestmove = (row, col)
+				self.board[row][col] = 0
+				return 99999
 			
-			# ������һ�غϸ�˭��
+			# next turn always white
 			nturn = turn == 1 and 2 or 1
 
 			# ��������������������֣��ߵ��к��ߵ���
-			score = - self.__search(nturn, depth - 1, -beta, -alpha)
+			if score > 9000:
+				score = - self.__search(nturn, depth, -beta, -alpha)
+			else:
+				score = - self.__search(nturn, depth - 1, -beta, -alpha)
 			if depth == MAX_DEPTH:
 				print(progress_count, len(moves), score, row, col)
 			# �����������ǰ�߷�
@@ -713,30 +735,54 @@ class searcher (object):
 	def search (self, turn, depth = 3):
 		self.maxdepth = depth
 		self.bestmove = None
-		score = self.__search(turn, depth)
-		if abs(score) > 8000:
-			self.maxdepth = depth
-			score = self.__search(turn, 1)
+		score = self.__search(turn, depth, alpha = 0, beta = 9999)
+
 		row, col = self.bestmove
 		return score, row, col
 
 
-#----------------------------------------------------------------------
-# psyco speedup
-#----------------------------------------------------------------------
-def psyco_speedup ():
-	try:
-		import psyco
-		psyco.bind(chessboard)
-		psyco.bind(evaluation)
-	except:
-		pass
-	return 0
+	# check who wins 0:nobody, 1:black, 2:white
+	def check (self):
+		board = self.board
+		dirs = ((1, -1), (1, 0), (1, 1), (0, 1))
+		for i in range(15):
+			for j in range(15):
+				if board[i][j] == 0: continue
+				id = board[i][j]
+				for d in dirs:
+					x, y = j, i
+					count = 0
+					for k in range(5):
+						if bget(board, y, x) != id: break
+						y += d[0]
+						x += d[1]
+						count += 1
+					if count == 5:
+						return id
+		return 0
 
-psyco_speedup()
+
+def bget(b, row, col):
+	if row < 0 or row >= 15 or col < 0 or col >= 15:
+		return 0
+	return b[row][col]
+
+
+def bdumps (b):
+	sio = []
+	board = b
+	for i in range(15):
+		for j in range(15):
+			stone = board[i][j]
+			if stone != 0:
+				ti = chr(ord('A') + i)
+				tj = chr(ord('A') + j)
+				sio.append('%d:%s%s'%(stone, ti, tj))
+	return ' '.join(sio)
 
 
 #----------------------------------------------------------------------
+# pypy3 speedup
 # main game
 #----------------------------------------------------------------------
 def gamemain():
@@ -745,7 +791,8 @@ def gamemain():
 	s.board = b.board()
 
 	opening = [
-		'1:ID 2:FD 1:GE 2:HE 1:FE 2:DE 1:EE 2:GF 1:EF 2:FF 1:CG 2:DG 1:HG 2:EG 1:FH 2:GG 1:EH 2:GH 1:DH 2:DI 1:GI 2:FJ',
+		'1:KD 2:HD 1:IE 2:JE 1:HE 2:FE 1:GE 2:IF 1:GF 2:HF 1:EG 2:FG 1:JG 2:GG 1:HH 2:IG 1:GH 2:IH 1:FH 2:FI 1:II 2:HJ',
+		#1:ID 2:FD 1:GE 2:HE 1:FE 2:DE 1:EE 2:GF 1:EF 2:FF 1:CG 2:DG 1:HG 2:EG 1:FH 2:GG 1:EH 2:GH 1:DH 2:DI 1:GI 2:FJ',
 		#'2:IG 2:GI 1:HH',
 		'1:IH 2:GI',
 		'1:HG 2:HI',
@@ -761,7 +808,6 @@ def gamemain():
 	openid = random.randint(0, len(opening) - 1)
 	openid = 0
 	b.loads(opening[openid])
-	turn = 2
 	history = []
 	undo = False
 	auto = False
@@ -773,6 +819,17 @@ def gamemain():
 	if len(sys.argv) > 1:
 		if sys.argv[1].lower() == 'hard':
 			DEPTH = MAX_DEPTH
+		elif sys.argv[1].lower() == 'test':
+			test1()
+			test2()
+			test3()
+			test4()
+			test5()
+		else:
+			b = chessboard()
+			b.loads(' '.join(sys.argv[1:]))
+			b.show()
+			return
 
 	while 1:
 		print('')
@@ -782,6 +839,7 @@ def gamemain():
 			print('Your move (u:undo, q:quit):', end='')
 			text = input().strip('\r\n\t ')
 			if len(text) == 2:
+				auto = False
 				tr = ord(text[0].upper()) - ord('A')
 				tc = ord(text[1].upper()) - ord('A')
 				if tr >= 0 and tc >= 0 and tr < 15 and tc < 15:
@@ -811,30 +869,29 @@ def gamemain():
 				move = history.pop()
 				b.loads(move)
 		else:
+			history.append(b.dumps())
 			if not auto:
-				history.append(b.dumps())
 				b[row][col] = player
-
 				if b.check() == player:
 					b.show()
 					print(b.dumps())
 					print('')
-					print('YOU WIN !!')
+					print(f'{player} WIN !!')
 					return 0
-
-			print('robot is thinking now ...')
-			score, row, col = s.search(player, DEPTH)
-			cord = '%s%s'%(chr(ord('A') + row), chr(ord('A') + col))
-			print('robot move to %s (%d)'%(cord, score))
-			b[row][col] = player
+			else:
+				print(f'robot {player} is thinking now ...')
+				score, row, col = s.search(player, DEPTH)
+				cord = '%s%s'%(chr(ord('A') + row), chr(ord('A') + col))
+				print('robot move to %s (%d)'%(cord, score))
+				b[row][col] = player
 
 			if b.check() == player:
 				b.show()
 				print(b.dumps())
 				print('')
-				print('YOU LOSE.')
+				print(f'{player} WIN !!')
 				return 0
-			player = player % 2 + 1
+		player = player % 2 + 1
 
 	return 0
 
@@ -921,7 +978,7 @@ if __name__ == '__main__':
 			while 1:
 				print(b)
 				print('your move (pos):', end='')
-				text = raw_input().strip('\r\n\t ')
+				text = input().strip('\r\n\t ')
 				if len(text) == 2:
 					tr = ord(text[0].upper()) - ord('A')
 					tc = ord(text[1].upper()) - ord('A')
@@ -947,4 +1004,6 @@ if __name__ == '__main__':
 	gamemain()
 
 
-
+"""
+TODO, after 1:DH (SFOUR), bot 2 can not evaluate EH is game move
+"""
